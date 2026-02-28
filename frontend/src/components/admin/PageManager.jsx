@@ -262,7 +262,6 @@ export default function PageManager() {
               </div>
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button
-                  onClick={() => setPreviewContent(null) || openEdit(p).then(() => setPreviewContent(null))}
                   data-testid={`edit-page-${p.id}`}
                   onClick={() => openEdit(p)}
                   title="Edit"
