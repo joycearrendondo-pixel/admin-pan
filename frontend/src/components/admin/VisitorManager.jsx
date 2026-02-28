@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { CheckCircle, XCircle, Trash2, RefreshCw, Globe, Bot, Monitor } from "lucide-react";
+import { CheckCircle, XCircle, Trash2, RefreshCw, Globe, Bot, Monitor, ChevronLeft, ChevronRight } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL + "/api";
 
 const statusColor = (s) => ({
   approved: "#00ff88", blocked: "#ff4444", pending: "#ffaa00"
 }[s] || "#555");
+
+const ITEMS_PER_PAGE = 10;
+const MAX_PAGES = 6;
 
 export default function VisitorManager({ liveEvents }) {
   const [visitors, setVisitors] = useState([]);
@@ -15,6 +18,7 @@ export default function VisitorManager({ liveEvents }) {
   const [approveModal, setApproveModal] = useState(null); // visitor object
   const [selectedPage, setSelectedPage] = useState("");
   const [filter, setFilter] = useState("all"); // all, pending, approved, blocked, bot
+  const [currentPage, setCurrentPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -25,6 +29,7 @@ export default function VisitorManager({ liveEvents }) {
       ]);
       setVisitors(vr.data);
       setPages(pr.data);
+      setCurrentPage(1); // Reset to first page on refresh
     } catch (_) {}
     setLoading(false);
   }, []);
@@ -78,6 +83,25 @@ export default function VisitorManager({ liveEvents }) {
     if (filter === "bot") return v.is_bot;
     return v.status === filter;
   });
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const displayPages = Math.min(totalPages, MAX_PAGES);
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIdx = startIdx + ITEMS_PER_PAGE;
+  const paginatedVisitors = filtered.slice(startIdx, endIdx);
+
+  const handlePrevPage = () => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(displayPages, prev + 1));
+  };
+
+  const handlePageClick = (page) => {
+    setCurrentPage(page);
+  };
 
   return (
     <div data-testid="visitor-manager" className="slide-up">
@@ -152,7 +176,7 @@ export default function VisitorManager({ liveEvents }) {
             <button
               key={f}
               data-testid={`filter-${f}`}
-              onClick={() => setFilter(f)}
+              onClick={() => { setFilter(f); setCurrentPage(1); }}
               style={{
                 background: filter === f ? "#00ff88" : "transparent",
                 color: filter === f ? "#000" : "#444",
@@ -196,7 +220,7 @@ export default function VisitorManager({ liveEvents }) {
               {!loading && filtered.length === 0 && (
                 <tr><td colSpan={8} style={{ padding: "2rem", textAlign: "center", color: "#222" }}>No visitors found</td></tr>
               )}
-              {filtered.map((v) => (
+              {paginatedVisitors.map((v) => (
                 <tr key={v.id} data-testid={`visitor-row-${v.id}`} style={{
                   borderBottom: "1px solid #0a0a0a",
                   background: v.status === "pending" ? "#0a0800" : "transparent"
@@ -282,8 +306,96 @@ export default function VisitorManager({ liveEvents }) {
         </div>
       </div>
 
+      {/* Pagination Controls */}
+      <div style={{ marginTop: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ color: "#333", fontSize: "0.6rem" }}>
+          {filtered.length > 0 ? (
+            <>
+              {startIdx + 1}–{Math.min(endIdx, filtered.length)} of {filtered.length} record(s)
+            </>
+          ) : (
+            "No records"
+          )}
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+            <button
+              onClick={handlePrevPage}
+              disabled={currentPage === 1}
+              data-testid="prev-page-btn"
+              style={{
+                background: currentPage === 1 ? "transparent" : "#0a1a0a",
+                border: "1px solid #222",
+                color: currentPage === 1 ? "#333" : "#00ff88",
+                padding: "0.3rem 0.5rem",
+                cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.2rem",
+                fontSize: "0.65rem",
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: "0.1em",
+                transition: "all 0.2s"
+              }}
+            >
+              <ChevronLeft size={12} /> PREV
+            </button>
+
+            {/* Page numbers */}
+            <div style={{ display: "flex", gap: "0.2rem" }}>
+              {Array.from({ length: displayPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => handlePageClick(page)}
+                  data-testid={`page-btn-${page}`}
+                  style={{
+                    background: currentPage === page ? "#00ff88" : "#0a0a0a",
+                    border: `1px solid ${currentPage === page ? "#00ff88" : "#222"}`,
+                    color: currentPage === page ? "#000" : "#00ff88",
+                    padding: "0.3rem 0.5rem",
+                    cursor: "pointer",
+                    fontSize: "0.65rem",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontWeight: currentPage === page ? 700 : 400,
+                    letterSpacing: "0.1em",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleNextPage}
+              disabled={currentPage === displayPages}
+              data-testid="next-page-btn"
+              style={{
+                background: currentPage === displayPages ? "transparent" : "#0a1a0a",
+                border: "1px solid #222",
+                color: currentPage === displayPages ? "#333" : "#00ff88",
+                padding: "0.3rem 0.5rem",
+                cursor: currentPage === displayPages ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.2rem",
+                fontSize: "0.65rem",
+                fontFamily: "'JetBrains Mono', monospace",
+                letterSpacing: "0.1em",
+                transition: "all 0.2s"
+              }}
+            >
+              NEXT <ChevronRight size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+
       <div style={{ marginTop: "0.5rem", color: "#333", fontSize: "0.6rem" }}>
-        {filtered.length} record(s) shown
+        {totalPages > MAX_PAGES && (
+          <span>Showing {displayPages} of {totalPages} pages</span>
+        )}
       </div>
     </div>
   );
