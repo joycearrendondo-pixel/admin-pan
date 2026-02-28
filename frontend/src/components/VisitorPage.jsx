@@ -41,9 +41,10 @@ export default function VisitorPage() {
     setMessages(prev => [...prev.slice(-8), msg]);
   }, []);
 
-  // Animate loading messages
+  // Animate loading messages (start from index 1, index 0 shown during register)
   useEffect(() => {
     if (status !== "pending") return;
+    msgIdx.current = 1; // skip first msg already shown in register()
     const interval = setInterval(() => {
       if (msgIdx.current < LOADING_MESSAGES.length) {
         addMessage(LOADING_MESSAGES[msgIdx.current]);
