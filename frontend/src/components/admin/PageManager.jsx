@@ -280,7 +280,6 @@ export default function PageManager() {
                   </button>
                 )}
                 <button
-                  onClick={() => setPreviewContent(null)}
                   data-testid={`preview-page-${p.id}`}
                   onClick={async () => {
                     const r = await axios.get(`${API}/pages/${p.id}`);
